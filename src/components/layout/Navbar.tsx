@@ -55,13 +55,11 @@ export function Navbar() {
               strokeLinejoin="round" 
               className="h-5 w-5 ml-1.5"
             >
-              <path d="M19 13v3" />
-              <path d="M5 13v3" />
-              <path d="M4 13h16" />
-              <path d="M18 13V10a6 6 0 0 0-12 0v3" />
-              <path d="M12 16v4" />
-              <path d="M8 20h8" />
-              <rect x="7" y="14" width="10" height="2" rx="1" fill="currentColor" fillOpacity="0.1" />
+              <path d="M6 21h12" />
+              <path d="M12 21v-5" />
+              <path d="M9 16h7c1 0 2-1 2-2V7c0-1-1-2-2-2" />
+              <path d="M14 11H8" />
+              <path d="M9 16l-3 4" />
             </svg>
           </span>
         </Link>
@@ -70,7 +68,7 @@ export function Navbar() {
           {user ? (
             <>
               <Link href="/owner">
-                <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
+                <Button variant="ghost" size="sm" className="hidden sm:flex gap-2 text-primary font-semibold">
                   <LayoutDashboard className="h-4 w-4" />
                   Salon Owner
                 </Button>
