@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Scissors, User, Settings, LayoutDashboard, LogOut } from "lucide-react";
+import { Scissors, User, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
@@ -53,12 +53,6 @@ export function Navbar() {
                 <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
                   <LayoutDashboard className="h-4 w-4" />
                   Owner
-                </Button>
-              </Link>
-              <Link href="/scbadminpanel">
-                <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
-                  <Settings className="h-4 w-4" />
-                  Admin
                 </Button>
               </Link>
               
