@@ -15,15 +15,17 @@ import {
   IndianRupee, 
   Calendar, 
   Scissors, 
-  CreditCard,
   UserCheck,
   Store,
-  Plus
+  Plus,
+  Camera,
+  Image as ImageIcon
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function OwnerDashboard() {
   const { user, isUserLoading } = useUser();
@@ -31,6 +33,7 @@ export default function OwnerDashboard() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Form state for registration
   const [formData, setFormData] = useState({
@@ -40,6 +43,7 @@ export default function OwnerDashboard() {
     landmark: "",
     city: "",
     state: "",
+    imageUrl: "",
   });
 
   // Query for the owner's salon
@@ -57,19 +61,30 @@ export default function OwnerDashboard() {
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || isSalonLoading || !mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground animate-pulse">Checking salon records...</p>
-      </div>
-    );
-  }
-
-  const salon = salons?.[0];
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagePreview(base64String);
+        setFormData(prev => ({ ...prev, imageUrl: base64String }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleRegisterSalon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !db) return;
+    if (!formData.imageUrl) {
+      toast({
+        title: "Photo Required",
+        description: "Please upload a photo of your salon's front side.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -83,6 +98,7 @@ export default function OwnerDashboard() {
         landmark: formData.landmark,
         city: formData.city,
         state: formData.state,
+        imageUrl: formData.imageUrl,
         isVerifiedByAdmin: false,
         isActive: false,
         createdAt: serverTimestamp(),
@@ -106,6 +122,16 @@ export default function OwnerDashboard() {
     }
   };
 
+  if (isUserLoading || isSalonLoading || !mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground animate-pulse">Checking salon records...</p>
+      </div>
+    );
+  }
+
+  const salon = salons?.[0];
+
   if (!salon) {
     return (
       <div className="min-h-screen bg-background">
@@ -123,6 +149,38 @@ export default function OwnerDashboard() {
             <Card className="rounded-3xl border-none shadow-xl overflow-hidden bg-white">
               <form onSubmit={handleRegisterSalon}>
                 <CardContent className="p-8 space-y-6">
+                  <div className="space-y-4">
+                    <Label>Salon Front-Side Photo</Label>
+                    <div 
+                      className="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/30 transition-colors bg-muted/10 relative overflow-hidden aspect-video"
+                      onClick={() => document.getElementById('photo-upload')?.click()}
+                    >
+                      {imagePreview ? (
+                        <Image 
+                          src={imagePreview} 
+                          alt="Salon Preview" 
+                          fill 
+                          className="object-cover" 
+                        />
+                      ) : (
+                        <>
+                          <div className="bg-primary/10 p-4 rounded-2xl text-primary mb-3">
+                            <Camera className="h-6 w-6" />
+                          </div>
+                          <p className="font-medium">Click to upload salon photo</p>
+                          <p className="text-xs text-muted-foreground mt-1">Clear shot of the shop front is recommended</p>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                      id="photo-upload" 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleImageChange}
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="name">Salon Name</Label>
                     <Input 
@@ -226,65 +284,41 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: "Pending Requests", value: "0", icon: Clock, color: "text-amber-500", bg: "bg-amber-50" },
-            { label: "Bookings Today", value: "0", icon: Calendar, color: "text-primary", bg: "bg-primary/5" },
-            { label: "Earnings (Month)", value: "₹0", icon: IndianRupee, color: "text-green-600", bg: "bg-green-50" },
-            { label: "User Flags Given", value: "0", icon: UserCheck, color: "text-red-600", bg: "bg-red-50" },
-          ].map((stat, i) => (
-            <Card key={i} className="rounded-3xl border-none shadow-sm overflow-hidden">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className={`${stat.bg} ${stat.color} p-4 rounded-2xl`}>
-                  <stat.icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-headline font-bold">{stat.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-headline font-bold">Incoming Requests</h2>
-              <Button variant="ghost" size="sm" className="text-primary font-bold">View History</Button>
-            </div>
-            <Card className="rounded-3xl border-dashed py-20 flex flex-col items-center justify-center text-center bg-white">
-              <div className="bg-muted w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                <Calendar className="h-6 w-6 text-muted-foreground" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="rounded-3xl border-none shadow-xl overflow-hidden bg-white">
+              <div className="relative aspect-video w-full">
+                <Image 
+                  src={salon.imageUrl || 'https://picsum.photos/seed/salon/400/300'} 
+                  alt={salon.name} 
+                  fill 
+                  className="object-cover"
+                />
               </div>
-              <p className="text-muted-foreground font-medium">No booking requests at the moment.</p>
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-             <Card className="rounded-3xl border-none shadow-xl bg-primary text-white p-6">
-                <h3 className="text-xl font-headline font-bold mb-4">Store Info</h3>
+              <CardContent className="p-6">
+                <h3 className="text-xl font-headline font-bold mb-4">Salon Identity</h3>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <p className="text-xs text-primary-foreground/70 uppercase font-bold tracking-tight">Address</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tight">Address</p>
                     <p className="text-sm leading-snug">{salon.address}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-primary-foreground/70 uppercase font-bold tracking-tight">Landmark</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tight">Landmark</p>
                     <p className="text-sm">{salon.landmark}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-primary-foreground/70 uppercase font-bold tracking-tight">Location</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tight">Location</p>
                     <p className="text-sm">{salon.city}, {salon.state}</p>
                   </div>
-                  <Button variant="outline" className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl py-6 font-bold shadow-lg border-none mt-4">
+                  <Button variant="outline" className="w-full rounded-2xl py-6 font-bold mt-4">
                     Update Details
                   </Button>
                 </div>
-             </Card>
+              </CardContent>
+            </Card>
 
-             <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-                <h3 className="text-xl font-headline font-bold mb-4">Salon Settings</h3>
+            <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+                <h3 className="text-xl font-headline font-bold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <Button variant="ghost" className="w-full justify-start rounded-xl gap-3 text-left">
                     <Plus className="h-4 w-4 text-primary" /> Add New Service
@@ -294,6 +328,41 @@ export default function OwnerDashboard() {
                   </Button>
                 </div>
              </Card>
+          </div>
+
+          <div className="lg:col-span-3 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { label: "Pending Requests", value: "0", icon: Clock, color: "text-amber-500", bg: "bg-amber-50" },
+                { label: "Bookings Today", value: "0", icon: Calendar, color: "text-primary", bg: "bg-primary/5" },
+                { label: "User Flags Given", value: "0", icon: UserCheck, color: "text-red-600", bg: "bg-red-50" },
+              ].map((stat, i) => (
+                <Card key={i} className="rounded-3xl border-none shadow-sm overflow-hidden">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className={`${stat.bg} ${stat.color} p-4 rounded-2xl`}>
+                      <stat.icon className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                      <p className="text-2xl font-headline font-bold">{stat.value}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-headline font-bold">Incoming Requests</h2>
+                <Button variant="ghost" size="sm" className="text-primary font-bold">View History</Button>
+              </div>
+              <Card className="rounded-3xl border-dashed py-20 flex flex-col items-center justify-center text-center bg-white">
+                <div className="bg-muted w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                  <Calendar className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground font-medium">No booking requests at the moment.</p>
+              </Card>
+            </div>
           </div>
         </div>
       </main>

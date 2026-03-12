@@ -9,10 +9,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, ShieldAlert, BarChart3, Building2, Search, Lock, Store } from "lucide-react";
+import { ShieldCheck, ShieldAlert, BarChart3, Building2, Search, Lock, Store, Image as ImageIcon } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
+import Image from "next/image";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
   const { user } = useUser();
@@ -178,6 +186,7 @@ export default function AdminDashboard() {
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow>
+                    <TableHead className="font-bold">Salon Photo</TableHead>
                     <TableHead className="font-bold">Salon Name</TableHead>
                     <TableHead className="font-bold">Location</TableHead>
                     <TableHead className="font-bold">Status</TableHead>
@@ -188,6 +197,33 @@ export default function AdminDashboard() {
                 <TableBody>
                   {filteredSalons.map((salon) => (
                     <TableRow key={salon.id} className="hover:bg-muted/5">
+                      <TableCell>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <div className="relative h-12 w-20 rounded-lg overflow-hidden cursor-pointer border hover:opacity-80 transition-opacity">
+                              <Image 
+                                src={salon.imageUrl || 'https://picsum.photos/seed/salon/400/300'} 
+                                alt={salon.name} 
+                                fill 
+                                className="object-cover"
+                              />
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl">
+                            <DialogHeader>
+                              <DialogTitle>{salon.name} - Front Side View</DialogTitle>
+                            </DialogHeader>
+                            <div className="relative aspect-video w-full mt-4 rounded-xl overflow-hidden">
+                              <Image 
+                                src={salon.imageUrl || 'https://picsum.photos/seed/salon/1200/800'} 
+                                alt={salon.name} 
+                                fill 
+                                className="object-contain bg-black/5"
+                              />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="bg-muted p-2 rounded-lg">
