@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -9,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   CheckCircle, 
   Clock, 
@@ -19,10 +19,22 @@ import {
   Store,
   Plus,
   Camera,
-  Image as ImageIcon
+  Trash2,
+  Loader2
 } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, serverTimestamp, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, serverTimestamp, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -32,6 +44,7 @@ export default function OwnerDashboard() {
   const db = useFirestore();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingService, setIsAddingService] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -46,6 +59,14 @@ export default function OwnerDashboard() {
     imageUrl: "",
   });
 
+  // Form state for new service
+  const [serviceData, setServiceData] = useState({
+    name: "",
+    description: "",
+    price: "",
+    durationMinutes: "30",
+  });
+
   // Query for the owner's salon
   const salonQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -53,6 +74,15 @@ export default function OwnerDashboard() {
   }, [db, user?.uid]);
 
   const { data: salons, isLoading: isSalonLoading } = useCollection(salonQuery);
+  const salon = salons?.[0];
+
+  // Query for services of the salon
+  const servicesQuery = useMemoFirebase(() => {
+    if (!db || !salon?.id) return null;
+    return collection(db, "salons", salon.id, "services");
+  }, [db, salon?.id]);
+
+  const { data: services, isLoading: isServicesLoading } = useCollection(servicesQuery);
 
   useEffect(() => {
     setMounted(true);
@@ -87,39 +117,91 @@ export default function OwnerDashboard() {
     }
 
     setIsSubmitting(true);
-    try {
-      const salonRef = doc(collection(db, "salons"));
-      const newSalon = {
-        id: salonRef.id,
-        ownerId: user.uid,
-        name: formData.name,
-        description: formData.description,
-        address: formData.address,
-        landmark: formData.landmark,
-        city: formData.city,
-        state: formData.state,
-        imageUrl: formData.imageUrl,
-        isVerifiedByAdmin: false,
-        isActive: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+    const salonRef = doc(collection(db, "salons"));
+    const newSalon = {
+      id: salonRef.id,
+      ownerId: user.uid,
+      name: formData.name,
+      description: formData.description,
+      address: formData.address,
+      landmark: formData.landmark,
+      city: formData.city,
+      state: formData.state,
+      imageUrl: formData.imageUrl,
+      isVerifiedByAdmin: false,
+      isActive: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
 
-      await setDoc(salonRef, newSalon);
-      
-      toast({
-        title: "Registration Successful",
-        description: "Your salon is now listed and awaiting administrative verification.",
+    setDoc(salonRef, newSalon)
+      .then(() => {
+        toast({
+          title: "Registration Successful",
+          description: "Your salon is now listed and awaiting administrative verification.",
+        });
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: salonRef.path,
+          operation: 'create',
+          requestResourceData: newSalon
+        }));
+      })
+      .finally(() => setIsSubmitting(false));
+  };
+
+  const handleAddService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !db || !salon) return;
+
+    setIsAddingService(true);
+    const serviceRef = doc(collection(db, "salons", salon.id, "services"));
+    const newService = {
+      id: serviceRef.id,
+      salonId: salon.id,
+      salonOwnerId: user.uid, // Denormalized for security rules
+      name: serviceData.name,
+      description: serviceData.description,
+      price: Number(serviceData.price),
+      durationMinutes: Number(serviceData.durationMinutes),
+    };
+
+    setDoc(serviceRef, newService)
+      .then(() => {
+        toast({
+          title: "Service Added",
+          description: `${newService.name} has been added to your menu.`,
+        });
+        setServiceData({ name: "", description: "", price: "", durationMinutes: "30" });
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: serviceRef.path,
+          operation: 'create',
+          requestResourceData: newService
+        }));
+      })
+      .finally(() => setIsAddingService(false));
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!db || !salon) return;
+    const serviceRef = doc(db, "salons", salon.id, "services", serviceId);
+    
+    deleteDoc(serviceRef)
+      .then(() => {
+        toast({
+          title: "Service Removed",
+          description: "The service has been removed from your menu.",
+        });
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: serviceRef.path,
+          operation: 'delete'
+        }));
       });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Could not register salon.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   if (isUserLoading || isSalonLoading || !mounted) {
@@ -129,8 +211,6 @@ export default function OwnerDashboard() {
       </div>
     );
   }
-
-  const salon = salons?.[0];
 
   if (!salon) {
     return (
@@ -276,11 +356,6 @@ export default function OwnerDashboard() {
                {salon.isActive ? <CheckCircle className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
                {salon.isActive ? 'Verified & Active' : 'Pending Verification'}
              </Badge>
-             {!salon.isActive && (
-               <p className="text-xs text-muted-foreground hidden lg:block max-w-[200px]">
-                 Note: Your salon will appear in search results once verified.
-               </p>
-             )}
           </div>
         </div>
 
@@ -310,9 +385,6 @@ export default function OwnerDashboard() {
                     <p className="text-xs text-muted-foreground uppercase font-bold tracking-tight">Location</p>
                     <p className="text-sm">{salon.city}, {salon.state}</p>
                   </div>
-                  <Button variant="outline" className="w-full rounded-2xl py-6 font-bold mt-4">
-                    Update Details
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -320,12 +392,121 @@ export default function OwnerDashboard() {
             <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
                 <h3 className="text-xl font-headline font-bold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  <Button variant="ghost" className="w-full justify-start rounded-xl gap-3 text-left">
-                    <Plus className="h-4 w-4 text-primary" /> Add New Service
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start rounded-xl gap-3 text-left">
-                    <Scissors className="h-4 w-4 text-primary" /> Manage Services
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-start rounded-xl gap-3 text-left">
+                        <Plus className="h-4 w-4 text-primary" /> Add New Service
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-3xl">
+                      <DialogHeader>
+                        <DialogTitle>Add New Service</DialogTitle>
+                        <DialogDescription>Define a service your salon offers.</DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleAddService} className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="s-name">Service Name</Label>
+                          <Input 
+                            id="s-name" 
+                            placeholder="e.g. Haircut & Styling" 
+                            required 
+                            value={serviceData.name}
+                            onChange={(e) => setServiceData({...serviceData, name: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="s-desc">Description (Optional)</Label>
+                          <Textarea 
+                            id="s-desc" 
+                            placeholder="Brief details about the service..."
+                            value={serviceData.description}
+                            onChange={(e) => setServiceData({...serviceData, description: e.target.value})}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="s-price">Price (₹)</Label>
+                            <Input 
+                              id="s-price" 
+                              type="number" 
+                              required 
+                              placeholder="450"
+                              value={serviceData.price}
+                              onChange={(e) => setServiceData({...serviceData, price: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="s-dur">Duration (Min)</Label>
+                            <Input 
+                              id="s-dur" 
+                              type="number" 
+                              required 
+                              placeholder="30"
+                              value={serviceData.durationMinutes}
+                              onChange={(e) => setServiceData({...serviceData, durationMinutes: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button type="submit" className="w-full rounded-2xl" disabled={isAddingService}>
+                            {isAddingService ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Create Service
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-start rounded-xl gap-3 text-left">
+                        <Scissors className="h-4 w-4 text-primary" /> Manage Services
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl rounded-3xl">
+                      <DialogHeader>
+                        <DialogTitle>Service Menu</DialogTitle>
+                        <DialogDescription>List of services offered by {salon.name}.</DialogDescription>
+                      </DialogHeader>
+                      <div className="mt-4 border rounded-2xl overflow-hidden">
+                        {isServicesLoading ? (
+                          <div className="p-8 text-center text-muted-foreground animate-pulse">Loading menu...</div>
+                        ) : !services || services.length === 0 ? (
+                          <div className="p-12 text-center text-muted-foreground">No services added yet.</div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Price</TableHead>
+                                <TableHead>Duration</TableHead>
+                                <TableHead className="text-right">Action</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {services.map((svc) => (
+                                <TableRow key={svc.id}>
+                                  <TableCell className="font-medium">{svc.name}</TableCell>
+                                  <TableCell>₹{svc.price}</TableCell>
+                                  <TableCell>{svc.durationMinutes} min</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-red-500 hover:bg-red-50"
+                                      onClick={() => handleDeleteService(svc.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
              </Card>
           </div>
