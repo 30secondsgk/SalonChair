@@ -53,7 +53,7 @@ export function Navbar() {
               strokeWidth="2.5" 
               strokeLinecap="round" 
               strokeLinejoin="round" 
-              className="h-5 w-5 ml-1.5"
+              className="h-6 w-6 ml-1.5"
             >
               <path d="M6 21h12" />
               <path d="M12 21v-5" />
