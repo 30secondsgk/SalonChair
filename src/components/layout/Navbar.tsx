@@ -55,7 +55,7 @@ export function Navbar() {
                   Owner
                 </Button>
               </Link>
-              <Link href="/admin">
+              <Link href="/scbadminpanel">
                 <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
                   <Settings className="h-4 w-4" />
                   Admin
