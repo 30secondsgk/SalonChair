@@ -1,8 +1,20 @@
-export const firebaseConfig = {
-  "projectId": "studio-101622214-d421f",
-  "appId": "1:148863280474:web:d70b99a98f2bd3ca0ebf63",
-  "apiKey": "AIzaSyDggCCi5Yzq2b-qNRiK0C-YxD02uWpxAgw",
-  "authDomain": "studio-101622214-d421f.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "148863280474"
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+// Initialize Firebase safely
+// This checks if an app already exists; if not, it creates one using the config.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export default app;
