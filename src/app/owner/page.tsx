@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -21,7 +21,12 @@ import { toast } from "@/hooks/use-toast";
 
 export default function OwnerDashboard() {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
+  const [mounted, setMounted] = useState(false);
   const salon = MOCK_SALONS[0]; // Assuming logged in as owner of s1
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleAction = (id: string, action: 'accepted' | 'rejected') => {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: action } : b));
@@ -159,7 +164,9 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="flex justify-between items-center text-primary-foreground/80">
                     <span>Next Due</span>
-                    <span className="font-bold text-white">{salon.subscriptionExpiry.toLocaleDateString()}</span>
+                    <span className="font-bold text-white">
+                      {mounted ? salon.subscriptionExpiry.toLocaleDateString() : 'Loading...'}
+                    </span>
                   </div>
                   <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl py-6 font-bold shadow-lg">
                     Pay Now

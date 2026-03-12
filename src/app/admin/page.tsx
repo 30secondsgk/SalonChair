@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,11 @@ import { toast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
   const [salons, setSalons] = useState<Salon[]>(MOCK_SALONS);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleStatus = (id: string, newStatus: 'active' | 'hidden' | 'pending') => {
     setSalons(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
@@ -116,10 +121,14 @@ export default function AdminDashboard() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm font-medium">
-                        {salon.subscriptionExpiry < new Date() ? (
-                          <span className="text-red-500">Expired</span>
+                        {mounted ? (
+                          salon.subscriptionExpiry < new Date() ? (
+                            <span className="text-red-500">Expired</span>
+                          ) : (
+                            <span className="text-green-600">Paid</span>
+                          )
                         ) : (
-                          <span className="text-green-600">Paid</span>
+                          <span className="text-muted-foreground">Checking...</span>
                         )}
                       </span>
                     </TableCell>
