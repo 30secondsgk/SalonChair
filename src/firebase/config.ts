@@ -11,10 +11,5 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase safely
-// This checks if an app already exists; if not, it creates one using the config.
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export default app;
+// We no longer initialize at the module level here to avoid build-time errors.
+// The initialization is now handled centrally in src/firebase/index.ts via the provider.
