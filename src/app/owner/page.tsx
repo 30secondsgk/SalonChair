@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
@@ -22,7 +21,10 @@ import {
   Camera,
   Trash2,
   Pencil,
-  Loader2
+  Loader2,
+  XCircle,
+  Phone,
+  Check
 } from "lucide-react";
 import { 
   Dialog, 
@@ -40,6 +42,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { format } from "date-fns";
 
 export default function OwnerDashboard() {
   const { user, isUserLoading } = useUser();
@@ -87,6 +90,14 @@ export default function OwnerDashboard() {
   }, [db, salon?.id]);
 
   const { data: services, isLoading: isServicesLoading } = useCollection(servicesQuery);
+
+  // Query for appointments of the salon
+  const appointmentsQuery = useMemoFirebase(() => {
+    if (!db || !salon?.id) return null;
+    return query(collection(db, "appointments"), where("salonId", "==", salon.id));
+  }, [db, salon?.id]);
+
+  const { data: appointments, isLoading: isAppointmentsLoading } = useCollection(appointmentsQuery);
 
   useEffect(() => {
     setMounted(true);
@@ -239,6 +250,22 @@ export default function OwnerDashboard() {
       });
   };
 
+  const handleUpdateAppointmentStatus = (appointmentId: string, newStatus: string) => {
+    if (!db) return;
+    const appointmentRef = doc(db, "appointments", appointmentId);
+    updateDoc(appointmentRef, { status: newStatus, updatedAt: serverTimestamp() })
+      .then(() => {
+        toast({ title: `Appointment ${newStatus}` });
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: appointmentRef.path,
+          operation: 'update',
+          requestResourceData: { status: newStatus }
+        }));
+      });
+  };
+
   if (isUserLoading || isSalonLoading || !mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -376,6 +403,10 @@ export default function OwnerDashboard() {
       </div>
     );
   }
+
+  const pendingAppointments = appointments?.filter(a => a.status === "Pending") || [];
+  const todayBookings = appointments?.filter(a => a.status === "Accepted" && a.requestedDateTime.startsWith(format(new Date(), 'yyyy-MM-dd'))) || [];
+  const noShowCount = appointments?.filter(a => a.status === "NoShow").length || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -617,9 +648,9 @@ export default function OwnerDashboard() {
           <div className="lg:col-span-3 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
-                { label: "Pending Requests", value: "0", icon: Clock, color: "text-amber-500", bg: "bg-amber-50" },
-                { label: "Bookings Today", value: "0", icon: Calendar, color: "text-primary", bg: "bg-primary/5" },
-                { label: "User Flags Given", value: "0", icon: UserCheck, color: "text-red-600", bg: "bg-red-50" },
+                { label: "Pending Requests", value: pendingAppointments.length.toString(), icon: Clock, color: "text-amber-500", bg: "bg-amber-50" },
+                { label: "Bookings Today", value: todayBookings.length.toString(), icon: Calendar, color: "text-primary", bg: "bg-primary/5" },
+                { label: "User Flags Given", value: noShowCount.toString(), icon: UserCheck, color: "text-red-600", bg: "bg-red-50" },
               ].map((stat, i) => (
                 <Card key={i} className="rounded-3xl border-none shadow-sm overflow-hidden">
                   <CardContent className="p-6 flex items-center gap-4">
@@ -640,12 +671,84 @@ export default function OwnerDashboard() {
                 <h2 className="text-xl font-headline font-bold">Incoming Requests</h2>
                 <Button variant="ghost" size="sm" className="text-primary font-bold">View History</Button>
               </div>
-              <Card className="rounded-3xl border-dashed py-20 flex flex-col items-center justify-center text-center bg-white">
-                <div className="bg-muted w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                  <Calendar className="h-6 w-6 text-muted-foreground" />
+              
+              {isAppointmentsLoading ? (
+                <div className="p-20 text-center animate-pulse text-muted-foreground">Loading requests...</div>
+              ) : !appointments || appointments.length === 0 ? (
+                <Card className="rounded-3xl border-dashed py-20 flex flex-col items-center justify-center text-center bg-white">
+                  <div className="bg-muted w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                    <Calendar className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground font-medium">No booking requests at the moment.</p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {appointments.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds).map((apt) => (
+                    <Card key={apt.id} className="rounded-3xl border-none shadow-sm bg-white overflow-hidden">
+                      <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                        <div className="flex gap-4 items-start">
+                          <div className={`p-3 rounded-2xl ${
+                            apt.status === 'Pending' ? 'bg-amber-50 text-amber-500' : 
+                            apt.status === 'Accepted' ? 'bg-green-50 text-green-600' :
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            <Calendar className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-lg">{apt.customerName}</h4>
+                              <Badge variant={apt.status === 'Pending' ? 'secondary' : 'default'} className="text-[10px] h-5">
+                                {apt.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-primary font-medium">{apt.serviceName}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <Clock className="h-3 w-3" /> {apt.requestedDateTime.replace('T', ' ')}
+                            </p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-3 w-3" /> {apt.customerPhone}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 w-full md:w-auto">
+                          {apt.status === 'Pending' && (
+                            <>
+                              <Button 
+                                className="flex-1 md:flex-none rounded-xl bg-green-600 hover:bg-green-700 gap-2"
+                                onClick={() => handleUpdateAppointmentStatus(apt.id, 'Accepted')}
+                              >
+                                <Check className="h-4 w-4" /> Accept
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                className="flex-1 md:flex-none rounded-xl text-red-600 border-red-100 hover:bg-red-50 gap-2"
+                                onClick={() => handleUpdateAppointmentStatus(apt.id, 'Rejected')}
+                              >
+                                <XCircle className="h-4 w-4" /> Reject
+                              </Button>
+                            </>
+                          )}
+                          {apt.status === 'Accepted' && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full md:w-auto rounded-xl text-amber-600 border-amber-100 hover:bg-amber-50 gap-2"
+                              onClick={() => handleUpdateAppointmentStatus(apt.id, 'NoShow')}
+                            >
+                              <UserCheck className="h-4 w-4" /> Flag No-Show
+                            </Button>
+                          )}
+                          {apt.status === 'NoShow' && (
+                            <Badge variant="destructive" className="rounded-xl px-4 py-2">
+                              No-Show Flagged
+                            </Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                <p className="text-muted-foreground font-medium">No booking requests at the moment.</p>
-              </Card>
+              )}
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, use, useEffect } from "react";
@@ -10,11 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Info, Star, Clock, CheckCircle2 } from "lucide-react";
+import { MapPin, Info, Star, Clock, CheckCircle2, Loader2 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection } from "firebase/firestore";
+import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
 import Image from "next/image";
 import { toast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SalonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,10 +39,19 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
 
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [bookingData, setBookingData] = useState({
+    userName: "",
+    userPhone: "",
+    date: "",
+    time: "",
+  });
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
+    }
+    if (user && !bookingData.userName) {
+      setBookingData(prev => ({ ...prev, userName: user.displayName || "" }));
     }
   }, [user, isUserLoading, router]);
 
@@ -62,8 +72,15 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
     </div>
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setBookingData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !db) return;
+
     if (!selectedService) {
       toast({
         title: "Error",
@@ -72,14 +89,46 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
       });
       return;
     }
+
     setBookingStatus('submitting');
-    setTimeout(() => {
-      setBookingStatus('success');
-      toast({
-        title: "Booking Requested",
-        description: "Your request has been sent to the owner. You'll receive a confirmation soon.",
+    
+    const service = services?.find(s => s.id === selectedService);
+    const appointmentRef = doc(collection(db, "appointments"));
+    
+    const newAppointment = {
+      id: appointmentRef.id,
+      customerId: user.uid,
+      customerName: bookingData.userName,
+      customerPhone: bookingData.userPhone,
+      salonId: salon.id,
+      salonName: salon.name,
+      salonOwnerId: salon.ownerId, // For security rules
+      serviceIds: [selectedService],
+      serviceName: service?.name || "",
+      requestedDateTime: `${bookingData.date}T${bookingData.time}`,
+      status: "Pending",
+      requestSentDateTime: new Date().toISOString(),
+      estimatedTotalAmount: service?.price || 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    setDoc(appointmentRef, newAppointment)
+      .then(() => {
+        setBookingStatus('success');
+        toast({
+          title: "Booking Requested",
+          description: "Your request has been sent to the owner.",
+        });
+      })
+      .catch((err) => {
+        setBookingStatus('idle');
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: appointmentRef.path,
+          operation: 'create',
+          requestResourceData: newAppointment
+        }));
       });
-    }, 1500);
   };
 
   if (bookingStatus === 'success') {
@@ -94,7 +143,7 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
             <h1 className="text-3xl font-headline font-bold mb-4">Request Sent!</h1>
             <p className="text-muted-foreground mb-8">
               We've notified <strong>{salon.name}</strong> of your appointment request. 
-              Keep an eye on your phone for a confirmation SMS within the next 4 hours.
+              Keep an eye on your phone for a confirmation SMS soon.
             </p>
             <div className="bg-muted/30 p-4 rounded-2xl mb-8 text-left">
               <p className="text-sm font-semibold mb-1">Landmark for your visit:</p>
@@ -202,20 +251,48 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="userName">Full Name</Label>
-                    <Input id="userName" placeholder="Your Name" required className="rounded-xl" defaultValue={user?.displayName || ''} />
+                    <Input 
+                      id="userName" 
+                      placeholder="Your Name" 
+                      required 
+                      className="rounded-xl" 
+                      value={bookingData.userName}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="userPhone">WhatsApp Number</Label>
-                    <Input id="userPhone" placeholder="+91 12345 67890" required className="rounded-xl" />
+                    <Input 
+                      id="userPhone" 
+                      placeholder="+91 12345 67890" 
+                      required 
+                      className="rounded-xl"
+                      value={bookingData.userPhone}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="date">Date</Label>
-                      <Input id="date" type="date" required className="rounded-xl" />
+                      <Input 
+                        id="date" 
+                        type="date" 
+                        required 
+                        className="rounded-xl"
+                        value={bookingData.date}
+                        onChange={handleInputChange}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="time">Time</Label>
-                      <Input id="time" type="time" required className="rounded-xl" />
+                      <Input 
+                        id="time" 
+                        type="time" 
+                        required 
+                        className="rounded-xl"
+                        value={bookingData.time}
+                        onChange={handleInputChange}
+                      />
                     </div>
                   </div>
                   
@@ -239,7 +316,7 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
                     className="w-full py-6 text-lg rounded-2xl shadow-lg shadow-primary/20"
                     disabled={bookingStatus === 'submitting'}
                   >
-                    {bookingStatus === 'submitting' ? 'Processing...' : 'Request Slot'}
+                    {bookingStatus === 'submitting' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : 'Request Slot'}
                   </Button>
                 </form>
               </CardContent>
