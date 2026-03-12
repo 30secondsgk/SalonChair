@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,22 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Star, Search, Filter, Calendar } from "lucide-react";
 import { MOCK_SALONS, Salon } from "@/lib/mock-data";
+import { useUser } from "@/firebase";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [state, setState] = useState<string>("all");
   const [city, setCity] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const filteredSalons = MOCK_SALONS.filter(salon => {
     const matchesState = state === "all" || salon.state === state;
@@ -31,6 +41,14 @@ export default function HomePage() {
     const isActive = salon.status === 'active';
     return matchesState && matchesCity && matchesSearch && isActive;
   });
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground animate-pulse">Redirecting to login...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

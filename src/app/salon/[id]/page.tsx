@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,14 +12,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Info, Star, Clock, CheckCircle2 } from "lucide-react";
 import { MOCK_SALONS } from "@/lib/mock-data";
+import { useUser } from "@/firebase";
 import Image from "next/image";
 import { toast } from "@/hooks/use-toast";
 
 export default function SalonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const salon = MOCK_SALONS.find(s => s.id === id);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   if (!salon) return <div>Salon not found</div>;
 
@@ -41,6 +51,14 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
       });
     }, 1500);
   };
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground animate-pulse">Checking credentials...</p>
+      </div>
+    );
+  }
 
   if (bookingStatus === 'success') {
     return (
