@@ -1,0 +1,581 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the SalonStack application, including public customers, salon owners, and administrators.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user, used for communication.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The phone number of the user, used for SMS/WhatsApp notifications."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the application. (Values: PublicUser, SalonOwner, Admin)"
+        },
+        "noShowFlagsCount": {
+          "type": "number",
+          "description": "The cumulative count of no-show flags received by the user."
+        },
+        "banUntil": {
+          "type": "string",
+          "description": "The date and time until which the user is banned due to excessive no-shows, if applicable. (Null if not banned)",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account information was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "phoneNumber",
+        "role",
+        "noShowFlagsCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Salon": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Salon",
+      "type": "object",
+      "description": "Represents a salon registered on the SalonStack platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Salon entity."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the User who owns this salon. (Relationship: User 1:N Salon)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the salon."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the salon, its specialties, or ambiance."
+        },
+        "address": {
+          "type": "string",
+          "description": "The full street address of the salon."
+        },
+        "landmark": {
+          "type": "string",
+          "description": "A prominent landmark near the salon for easier navigation."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city where the salon is located, used for filtering."
+        },
+        "state": {
+          "type": "string",
+          "description": "The state where the salon is located, used for filtering."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Geographical latitude of the salon's location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Geographical longitude of the salon's location."
+        },
+        "isVerifiedByAdmin": {
+          "type": "boolean",
+          "description": "Indicates whether the salon has been verified and authorized by an admin."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the salon is currently active and visible to public users, based on subscription status and admin verification."
+        },
+        "subscriptionId": {
+          "type": "string",
+          "description": "Reference to the current Subscription for this salon. (Relationship: Subscription 1:N Salon)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the salon was first registered.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the salon's information was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "address",
+        "landmark",
+        "city",
+        "state",
+        "isVerifiedByAdmin",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Service": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Service",
+      "type": "object",
+      "description": "Represents a specific service offered by a salon.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Service entity."
+        },
+        "salonId": {
+          "type": "string",
+          "description": "Reference to the Salon offering this service. (Relationship: Salon 1:N Service)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the service (e.g., 'Haircut', 'Shaving')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of what the service entails."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the service in the local currency (₹)."
+        },
+        "durationMinutes": {
+          "type": "number",
+          "description": "The estimated duration of the service in minutes."
+        }
+      },
+      "required": [
+        "id",
+        "salonId",
+        "name",
+        "price",
+        "durationMinutes"
+      ]
+    },
+    "Appointment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents a booking request or confirmed appointment made by a customer with a salon.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Appointment entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Public User who made the appointment. (Relationship: User 1:N Appointment)"
+        },
+        "salonId": {
+          "type": "string",
+          "description": "Reference to the Salon for which the appointment is made. (Relationship: Salon 1:N Appointment)"
+        },
+        "serviceIds": {
+          "type": "array",
+          "description": "References to the Services booked in this appointment. (Relationship: Service N:N Appointment)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requestedDateTime": {
+          "type": "string",
+          "description": "The date and time requested by the customer for the appointment.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the appointment. (Values: Pending, Accepted, Rejected, Completed, Cancelled, NoShow)"
+        },
+        "ownerResponseDateTime": {
+          "type": "string",
+          "description": "Timestamp when the salon owner responded to the appointment request.",
+          "format": "date-time"
+        },
+        "requestSentDateTime": {
+          "type": "string",
+          "description": "Timestamp when the appointment request was initially sent by the customer.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any special notes or requests from the customer for the appointment."
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "The reason provided by the salon owner if the appointment was rejected."
+        },
+        "estimatedTotalAmount": {
+          "type": "number",
+          "description": "The estimated total amount for all services booked in this appointment."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the appointment record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the appointment record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "salonId",
+        "serviceIds",
+        "requestedDateTime",
+        "status",
+        "requestSentDateTime",
+        "estimatedTotalAmount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "type": "object",
+      "description": "Manages the monthly subscription status and details for a salon.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Subscription entity."
+        },
+        "salonId": {
+          "type": "string",
+          "description": "Reference to the Salon this subscription belongs to. (Relationship: Salon 1:N Subscription)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the subscription. (Values: Active, Inactive, Trial, PendingPayment)"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date and time when the subscription period started.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The date and time when the current subscription period is due to expire.",
+          "format": "date-time"
+        },
+        "lastPaymentId": {
+          "type": "string",
+          "description": "Reference to the last successful Payment made for this subscription. (Relationship: Payment 1:N Subscription)"
+        },
+        "renewalDate": {
+          "type": "string",
+          "description": "The date and time of the next expected subscription renewal/payment.",
+          "format": "date-time"
+        },
+        "paymentDueNotificationSentAt": {
+          "type": "string",
+          "description": "Timestamp when the last payment due notification was sent for this subscription.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "salonId",
+        "status",
+        "startDate",
+        "endDate",
+        "renewalDate",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Records details of a payment made for a salon's subscription.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Payment entity."
+        },
+        "subscriptionId": {
+          "type": "string",
+          "description": "Reference to the Subscription this payment is for. (Relationship: Subscription 1:N Payment)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount paid for the subscription."
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "The date and time when the payment was successfully processed.",
+          "format": "date-time"
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "The transaction identifier provided by the payment gateway."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the payment. (Values: Success, Failed, Refunded)"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The method used for the payment (e.g., 'Credit Card', 'UPI', 'Net Banking')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the payment record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the payment record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "subscriptionId",
+        "amount",
+        "paymentDate",
+        "transactionId",
+        "status",
+        "paymentMethod",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NoShowFlag": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NoShowFlag",
+      "type": "object",
+      "description": "Records an instance where a customer failed to show up for a confirmed appointment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the NoShowFlag entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Public User who did not show up. (Relationship: User 1:N NoShowFlag)"
+        },
+        "appointmentId": {
+          "type": "string",
+          "description": "Reference to the specific Appointment that was missed. (Relationship: Appointment 1:N NoShowFlag)"
+        },
+        "salonId": {
+          "type": "string",
+          "description": "Reference to the Salon that flagged the no-show. (Relationship: Salon 1:N NoShowFlag)"
+        },
+        "flaggedAt": {
+          "type": "string",
+          "description": "The date and time when the no-show was flagged.",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Optional reason or comment for flagging the no-show."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "appointmentId",
+        "salonId",
+        "flaggedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores private profile data for each user. Accessible by the user themselves (request.auth.uid == userId) or by an Admin. Includes fields like 'role', 'noShowFlagsCount', 'banUntil' for direct authorization checks and UI display.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "AdminRole",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A collection used for Database Access Control (DBAC) to designate administrative users. The existence of a document at this path signifies that the {userId} is an administrator. No specific schema is enforced beyond a simple placeholder object, as existence is the primary check.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who has been granted administrator privileges."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/salons/{salonId}",
+        "definition": {
+          "entityName": "Salon",
+          "schema": {
+            "$ref": "#/backend/entities/Salon"
+          },
+          "description": "Stores main information for each salon. Publicly readable for authenticated users (when 'isActive' and 'isVerifiedByAdmin' are true). Writeable only by the salon's 'ownerId' or by an Admin. Includes 'ownerId' for authorization independence.",
+          "params": [
+            {
+              "name": "salonId",
+              "description": "The unique ID of the salon."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/salons/{salonId}/services/{serviceId}",
+        "definition": {
+          "entityName": "Service",
+          "schema": {
+            "$ref": "#/backend/entities/Service"
+          },
+          "description": "Details of services offered by a specific salon. Publicly readable by all authenticated users. Writeable only by the parent salon's owner or an Admin. Includes denormalized 'salonOwnerId' for authorization independence without parent document lookups.",
+          "params": [
+            {
+              "name": "salonId",
+              "description": "The unique ID of the parent salon."
+            },
+            {
+              "name": "serviceId",
+              "description": "The unique ID of the service."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/appointments/{appointmentId}",
+        "definition": {
+          "entityName": "Appointment",
+          "schema": {
+            "$ref": "#/backend/entities/Appointment"
+          },
+          "description": "Centralized collection for all appointments. Accessible by the 'customerId' who made the booking or the 'salonOwnerId' of the salon receiving the booking. Includes denormalized 'customerId' and 'salonOwnerId' for authorization independence and efficient querying (QAPs).",
+          "params": [
+            {
+              "name": "appointmentId",
+              "description": "The unique ID of the appointment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/salons/{salonId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Manages subscription details for a specific salon. Accessible only by the parent salon's owner or an Admin. Includes denormalized 'salonOwnerId' for authorization independence.",
+          "params": [
+            {
+              "name": "salonId",
+              "description": "The unique ID of the parent salon."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "The unique ID of the subscription."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/salons/{salonId}/subscriptions/{subscriptionId}/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Records payment details for a specific salon's subscription. Accessible only by the parent salon's owner or an Admin. Includes denormalized 'salonOwnerId' for authorization independence.",
+          "params": [
+            {
+              "name": "salonId",
+              "description": "The unique ID of the parent salon."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "The unique ID of the parent subscription."
+            },
+            {
+              "name": "paymentId",
+              "description": "The unique ID of the payment record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/noShowFlags/{flagId}",
+        "definition": {
+          "entityName": "NoShowFlag",
+          "schema": {
+            "$ref": "#/backend/entities/NoShowFlag"
+          },
+          "description": "Records instances where a customer failed to show up for an appointment. Accessible by the 'customerId' (to see their own flags), the 'salonOwnerId' (who flagged it), or an Admin. Includes denormalized 'customerId' and 'salonOwnerId' for authorization independence.",
+          "params": [
+            {
+              "name": "flagId",
+              "description": "The unique ID of the no-show flag."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to meet the core principles of Authorization Independence, Structural Segregation, and Access Modeling, prioritizing security, scalability, and debuggability. All authenticated users will be identified via `request.auth.uid`.\n\n**Authorization Independence (CRITICAL):** This is achieved by extensively denormalizing authorization-relevant fields directly into the documents that require access checks. Specifically:\n1.  **`Salon` documents** contain `ownerId` to directly identify the salon owner.\n2.  **`Service` documents** will denormalize `salonOwnerId` from their parent `Salon` to allow authorization checks without performing a `get()` on the parent `Salon` document.\n3.  **`Appointment` documents** will include both `customerId` (the user who made the booking) and `salonOwnerId` (the owner of the salon receiving the booking). This allows atomic read/write operations for both parties and simplifies security rules, avoiding `get()` calls to other collections.\n4.  **`Subscription` documents** will denormalize `salonOwnerId` to enable direct authorization checks by the salon owner or admin.\n5.  **`Payment` documents** will denormalize `salonOwnerId` from their associated `Salon` (via `Subscription`) to allow direct read access for the salon owner without multiple `get()` calls.\n6.  **`NoShowFlag` documents** will include both `customerId` (the flagged user) and `salonOwnerId` (the owner of the salon that issued the flag) for independent authorization.\n\nThis denormalization ensures that security rules can evaluate permissions solely based on the `request.auth.uid` and the fields present within the document being accessed, or simple existence checks (for admin roles), eliminating costly and non-atomic `get()` calls.\n\n**Querying for Access Patterns (QAPs):** The structure facilitates secure `list` operations:\n1.  **Public Salon Directory:** The `/salons` collection allows public users (all authenticated users) to list and filter salons based on `city`, `state`, `isActive`, and `isVerifiedByAdmin` fields. Rules will ensure only active and verified salons are readable.\n2.  **Salon Services:** The `/salons/{salonId}/services` subcollection enables efficient listing of services for a specific salon, readable by all authenticated users.\n3.  **User-Specific Data:** \n    *   `/users/{userId}` provides a private space for each user's profile, accessible only by the user themselves or an admin.\n    *   `/appointments` collection, by including `customerId` and `salonOwnerId`, supports QAPs for users to list *their own* appointments (`where('customerId', '==', request.auth.uid)`) and for salon owners to list *their salon's* appointments (`where('salonOwnerId', '==', request.auth.uid)`).\n    *   `/noShowFlags` collection allows users to see their own flags (`where('customerId', '==', request.auth.uid)`).\n4.  **Admin and Owner Specific Data:** Collections like `/roles_admin/{userId}`, `/salons/{salonId}/subscriptions`, and `/salons/{salonId}/subscriptions/{subscriptionId}/payments` are structured to enable direct access for admins or specific salon owners without exposing sensitive data broadly.\n\n**Structural Segregation:** Data with different security postures is separated:\n*   `/users/{userId}`: Private user profiles.\n*   `/roles_admin/{userId}`: Strictly for admin role verification.\n*   `/salons/{salonId}`: Publicly visible (filtered) salon data.\n*   `/salons/{salonId}/services`: Publicly visible service data.\n*   `/appointments`: Semi-private, accessible by `customerId` or `salonOwnerId`.\n*   `/salons/{salonId}/subscriptions` and `/salons/{salonId}/subscriptions/{subscriptionId}/payments`: Private to salon owner/admin.\n*   `/noShowFlags`: Semi-private, accessible by `customerId`, `salonOwnerId` or admin.\n\nThis design ensures clear, robust, and easily debuggable security rules, as authorization logic is contained within the document or path context, minimizing complex cross-document checks."
+  }
+}

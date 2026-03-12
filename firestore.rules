@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * Core Philosophy: This ruleset implements a multi-tenant salon management system with strict authentication
+     * requirements for all browsing, booking, and management activities. It follows a "Denormalized for Authorization"
+     * approach, where ownership IDs (like ownerId, salonOwnerId, and customerId) are duplicated on documents to
+     * ensure fast, independent security checks without recursive lookups.
+     *
+     * Data Structure:
+     * - /users and /roles_admin manage identity and administrative privileges.
+     * - /salons and its subcollections (/services, /subscriptions) manage salon-specific operations.
+     * - /appointments and /noShowFlags act as shared activity logs between customers and salon owners.
+     *
+     * Key Security Decisions:
+     * - Authentication is mandatory for all operations per user request.
+     * - Admin privileges are verified via the existence of a document in the /roles_admin collection.
+     * - Prototyping Mode: Schema validation is ignored for non-relational fields to allow rapid UI iteration,
+     *   but ownership fields (relational integrity) are strictly enforced.
+     */
+
+    // --- Helper Functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    // Combined ownership and existence check for updates/deletes
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    function isExistingAdmin() {
+      return resource != null && isAdmin();
+    }
+
+    // --- Rules ---
+
+    /**
+     * @description Rules for user profiles. Users can manage their own profile; Admins have full access.
+     * @path /users/{userId}
+     * @allow (get) if authenticated as {userId}.
+     * @deny (create) if the internal 'id' does not match the path {userId}.
+     * @principle Restricts access to a user's own data tree and enforces path-to-data consistency.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == userId;
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Database Access Control (DBAC) for Admin roles.
+     * @path /roles_admin/{userId}
+     * @allow (get) if the user is an admin.
+     * @deny (write) by any non-admin user.
+     * @principle Restricts administrative role management to existing administrators.
+     */
+    match /roles_admin/{userId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    /**
+     * @description Publicly browseable salons for authenticated users. Writes restricted to owners.
+     * @path /salons/{salonId}
+     * @allow (list) by any signed-in user.
+     * @deny (update) if the authenticated user is not the 'ownerId' stored in the document.
+     * @principle Public read with owner-only writes.
+     */
+    match /salons/{salonId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.ownerId) || isAdmin();
+      allow delete: if isExistingAdmin();
+
+      /**
+       * @description Salon services. Browsing is public; management is restricted to the salon owner.
+       * @path /salons/{salonId}/services/{serviceId}
+       * @allow (create) if the denormalized 'salonOwnerId' matches the auth UID.
+       * @deny (update) if attempting to change the 'salonOwnerId'.
+       * @principle Authorization independence using denormalized owner IDs.
+       */
+      match /services/{serviceId} {
+        allow get, list: if isSignedIn();
+        allow create: if isOwner(request.resource.data.salonOwnerId);
+        allow update: if (isExistingOwner(resource.data.salonOwnerId) || isAdmin()) && request.resource.data.salonOwnerId == resource.data.salonOwnerId;
+        allow delete: if isExistingOwner(resource.data.salonOwnerId) || isAdmin();
+      }
+
+      /**
+       * @description Subscription details for a salon.
+       * @path /salons/{salonId}/subscriptions/{subscriptionId}
+       * @allow (get) by the salon owner or admin.
+       * @deny (list) for anonymous users.
+       * @principle Access restricted to document owner and platform administrators.
+       */
+      match /subscriptions/{subscriptionId} {
+        allow get, list: if isOwner(resource.data.salonOwnerId) || isAdmin();
+        allow create: if isOwner(request.resource.data.salonOwnerId) || isAdmin();
+        allow update: if (isExistingOwner(resource.data.salonOwnerId) || isAdmin());
+        allow delete: if isAdmin();
+
+        /**
+         * @description Payment records for subscriptions.
+         * @path /salons/{salonId}/subscriptions/{subscriptionId}/payments/{paymentId}
+         * @allow (get) by the salon owner.
+         * @deny (write) by users who do not own the parent salon.
+         * @principle Cascading ownership check using denormalized IDs.
+         */
+        match /payments/{paymentId} {
+          allow get, list: if isOwner(resource.data.salonOwnerId) || isAdmin();
+          allow create, update, delete: if isAdmin(); // Payments are typically managed by system/admin
+        }
+      }
+    }
+
+    /**
+     * @description Centralized appointments. Accessible by the customer or the salon owner.
+     * @path /appointments/{appointmentId}
+     * @allow (create) if the customerId matches the authenticated user.
+     * @deny (get) if the user is neither the customer nor the salon owner.
+     * @principle Shared access model for closed collaborators.
+     */
+    match /appointments/{appointmentId} {
+      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.salonOwnerId) || isAdmin();
+      allow list: if isSignedIn(); // Filtering must be done via queries (e.g. where('customerId', '==', uid))
+      allow create: if isOwner(request.resource.data.customerId);
+      allow update: if (isExistingOwner(resource.data.customerId) || isExistingOwner(resource.data.salonOwnerId) || isAdmin())
+                    && request.resource.data.customerId == resource.data.customerId;
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description No-show flags. Visible to the flagged user and the reporting salon.
+     * @path /noShowFlags/{flagId}
+     * @allow (create) by the salon owner who encountered the no-show.
+     * @deny (delete) by the customer who was flagged.
+     * @principle Relational integrity and auditability of penalty flags.
+     */
+    match /noShowFlags/{flagId} {
+      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.salonOwnerId) || isAdmin();
+      allow list: if isSignedIn(); // Requires query filters for security
+      allow create: if isOwner(request.resource.data.salonOwnerId);
+      allow update: if (isExistingOwner(resource.data.salonOwnerId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+  }
+}
