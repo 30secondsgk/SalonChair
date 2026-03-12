@@ -36,6 +36,12 @@
       "description": "Relaxing facial treatment",
       "imageUrl": "https://picsum.photos/seed/facial/400/300",
       "imageHint": "facial treatment"
+    },
+    {
+      "id": "hero-salon",
+      "description": "Luxurious modern salon interior with professional lighting and equipment",
+      "imageUrl": "https://picsum.photos/seed/herosalon/1200/800",
+      "imageHint": "luxury salon"
     }
   ]
 }

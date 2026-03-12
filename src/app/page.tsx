@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Star, Search, Filter, Calendar } from "lucide-react";
 import { MOCK_SALONS, Salon } from "@/lib/mock-data";
 import { useUser } from "@/firebase";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -27,6 +28,8 @@ export default function HomePage() {
   const [state, setState] = useState<string>("all");
   const [city, setCity] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-salon');
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -55,7 +58,7 @@ export default function HomePage() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative py-12 bg-white border-b overflow-hidden">
+      <section className="relative py-12 md:py-20 bg-white border-b overflow-hidden">
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-2xl">
             <h1 className="text-4xl md:text-6xl font-headline font-bold mb-4 text-primary leading-tight">
@@ -98,14 +101,17 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none hidden lg:block">
-           <Image 
-              src="https://picsum.photos/seed/salon-hero/800/1200"
-              alt="Decorative"
-              fill
-              className="object-cover"
-              data-ai-hint="luxury salon"
-           />
+        <div className="absolute right-0 top-0 h-full w-full lg:w-2/5 opacity-10 lg:opacity-20 pointer-events-none">
+           {heroImage && (
+             <Image 
+                src={heroImage.imageUrl}
+                alt={heroImage.description}
+                fill
+                className="object-cover"
+                priority
+                data-ai-hint={heroImage.imageHint}
+             />
+           )}
         </div>
       </section>
 
