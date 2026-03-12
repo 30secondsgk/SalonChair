@@ -1,13 +1,12 @@
+'use client';
 
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Scissors, User, LayoutDashboard, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuth, useUser } from "@/firebase";
-import { signOut } from "firebase/auth";
-import { toast } from "@/hooks/use-toast";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Scissors, User, LayoutDashboard, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { toast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +14,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export function Navbar() {
   const { user } = useUser();
@@ -27,12 +26,12 @@ export function Navbar() {
     try {
       await signOut(auth);
       toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
+        title: 'Logged out',
+        description: 'You have been successfully logged out.',
       });
-      router.push("/login");
+      router.push('/login');
     } catch (error) {
-      console.error("Logout error", error);
+      console.error('Logout error', error);
     }
   };
 
@@ -45,23 +44,23 @@ export function Navbar() {
           </div>
           <span className="text-xl font-headline font-bold text-primary">SalonChair</span>
         </Link>
-        
+
         <div className="flex items-center gap-4">
           {user ? (
             <>
               <Link href="/owner">
                 <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
                   <LayoutDashboard className="h-4 w-4" />
-                  Owner
+                  Salon Owner
                 </Button>
               </Link>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary text-white">
-                        {user.email?.[0].toUpperCase() || "U"}
+                        {user.email?.[0].toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -73,7 +72,10 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-red-600 focus:text-red-600 cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>

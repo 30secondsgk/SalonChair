@@ -382,7 +382,7 @@ export default function OwnerDashboard() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-headline font-bold">Owner Dashboard</h1>
+            <h1 className="text-3xl font-headline font-bold">Salon Owner Dashboard</h1>
             <p className="text-muted-foreground">Managing <strong>{salon.name}</strong></p>
           </div>
           <div className="flex items-center gap-3">
