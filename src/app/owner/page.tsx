@@ -20,6 +20,7 @@ import {
   Plus,
   Camera,
   Trash2,
+  Pencil,
   Loader2
 } from "lucide-react";
 import { 
@@ -32,7 +33,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, serverTimestamp, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, serverTimestamp, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from "@/hooks/use-toast";
@@ -45,8 +46,10 @@ export default function OwnerDashboard() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddingService, setIsAddingService] = useState(false);
+  const [isUpdatingService, setIsUpdatingService] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [editingService, setEditingService] = useState<any | null>(null);
 
   // Form state for registration
   const [formData, setFormData] = useState({
@@ -183,6 +186,37 @@ export default function OwnerDashboard() {
         }));
       })
       .finally(() => setIsAddingService(false));
+  };
+
+  const handleUpdateService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !db || !salon || !editingService) return;
+
+    setIsUpdatingService(true);
+    const serviceRef = doc(db, "salons", salon.id, "services", editingService.id);
+    const updatedData = {
+      name: editingService.name,
+      description: editingService.description,
+      price: Number(editingService.price),
+      durationMinutes: Number(editingService.durationMinutes),
+    };
+
+    updateDoc(serviceRef, updatedData)
+      .then(() => {
+        toast({
+          title: "Service Updated",
+          description: "Your service details have been saved.",
+        });
+        setEditingService(null);
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: serviceRef.path,
+          operation: 'update',
+          requestResourceData: updatedData
+        }));
+      })
+      .finally(() => setIsUpdatingService(false));
   };
 
   const handleDeleteService = async (serviceId: string) => {
@@ -480,7 +514,7 @@ export default function OwnerDashboard() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Price</TableHead>
                                 <TableHead>Duration</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -490,14 +524,82 @@ export default function OwnerDashboard() {
                                   <TableCell>₹{svc.price}</TableCell>
                                   <TableCell>{svc.durationMinutes} min</TableCell>
                                   <TableCell className="text-right">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="text-red-500 hover:bg-red-50"
-                                      onClick={() => handleDeleteService(svc.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex justify-end gap-2">
+                                      <Dialog open={editingService?.id === svc.id} onOpenChange={(open) => !open && setEditingService(null)}>
+                                        <DialogTrigger asChild>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="text-primary hover:bg-primary/5"
+                                            onClick={() => setEditingService(svc)}
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="rounded-3xl">
+                                          <DialogHeader>
+                                            <DialogTitle>Edit Service</DialogTitle>
+                                            <DialogDescription>Update details for {svc.name}.</DialogDescription>
+                                          </DialogHeader>
+                                          <form onSubmit={handleUpdateService} className="space-y-4 pt-4">
+                                            <div className="space-y-2">
+                                              <Label htmlFor="edit-name">Service Name</Label>
+                                              <Input 
+                                                id="edit-name" 
+                                                required 
+                                                value={editingService?.name || ""}
+                                                onChange={(e) => setEditingService({...editingService, name: e.target.value})}
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor="edit-desc">Description</Label>
+                                              <Textarea 
+                                                id="edit-desc" 
+                                                value={editingService?.description || ""}
+                                                onChange={(e) => setEditingService({...editingService, description: e.target.value})}
+                                              />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="space-y-2">
+                                                <Label htmlFor="edit-price">Price (₹)</Label>
+                                                <Input 
+                                                  id="edit-price" 
+                                                  type="number" 
+                                                  required 
+                                                  value={editingService?.price || ""}
+                                                  onChange={(e) => setEditingService({...editingService, price: e.target.value})}
+                                                />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label htmlFor="edit-dur">Duration (Min)</Label>
+                                                <Input 
+                                                  id="edit-dur" 
+                                                  type="number" 
+                                                  required 
+                                                  value={editingService?.durationMinutes || ""}
+                                                  onChange={(e) => setEditingService({...editingService, durationMinutes: e.target.value})}
+                                                />
+                                              </div>
+                                            </div>
+                                            <DialogFooter>
+                                              <Button type="submit" className="w-full rounded-2xl" disabled={isUpdatingService}>
+                                                {isUpdatingService ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                                Save Changes
+                                              </Button>
+                                            </DialogFooter>
+                                          </form>
+                                        </DialogContent>
+                                      </Dialog>
+
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-red-500 hover:bg-red-50"
+                                        onClick={() => handleDeleteService(svc.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))}
