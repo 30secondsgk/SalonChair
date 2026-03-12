@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'SalonStack - Expert Bookings & Salon Marketplace',
+  title: 'SalonChair - Expert Bookings & Salon Marketplace',
   description: 'Book top-rated salons near you with ease.',
 };
 

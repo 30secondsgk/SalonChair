@@ -1,6 +1,7 @@
+
 # Deploying to Vercel
 
-To deploy this SalonStack application to Vercel, follow these steps:
+To deploy this SalonChair application to Vercel, follow these steps:
 
 1. **Push your code to Git**: Create a repository on GitHub, GitLab, or Bitbucket and push your current code.
 2. **Import to Vercel**: 
@@ -14,7 +15,7 @@ To deploy this SalonStack application to Vercel, follow these steps:
    - The application currently uses the Firebase configuration hardcoded in `src/firebase/config.ts`. Since these are public client-side keys, they will work on Vercel without additional configuration.
 5. **Deploy**: Click the **Deploy** button.
 6. **Final Step - Firebase Authorized Domains**:
-   - After the deployment finishes, copy your Vercel URL (e.g., `https://salonstack-xyz.vercel.app`).
+   - After the deployment finishes, copy your Vercel URL (e.g., `https://salonchair-xyz.vercel.app`).
    - Go to the [Firebase Console](https://console.firebase.google.com/).
    - Navigate to **Authentication** > **Settings** > **Authorized Domains**.
    - Click **Add Domain** and paste your Vercel URL. This is critical for Firebase Auth to function correctly on your live site.

@@ -43,7 +43,7 @@ export function Navbar() {
           <div className="bg-primary p-2 rounded-lg">
             <Scissors className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-xl font-headline font-bold text-primary">SalonStack</span>
+          <span className="text-xl font-headline font-bold text-primary">SalonChair</span>
         </Link>
         
         <div className="flex items-center gap-4">
