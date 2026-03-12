@@ -1,0 +1,41 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "salon-1",
+      "description": "Modern hair salon interior with mirrors and styling chairs",
+      "imageUrl": "https://picsum.photos/seed/salon1/800/600",
+      "imageHint": "hair salon"
+    },
+    {
+      "id": "salon-2",
+      "description": "Minimalist barbershop with wooden accents",
+      "imageUrl": "https://picsum.photos/seed/salon2/800/600",
+      "imageHint": "barbershop"
+    },
+    {
+      "id": "salon-3",
+      "description": "Luxury spa and beauty parlor setup",
+      "imageUrl": "https://picsum.photos/seed/salon3/800/600",
+      "imageHint": "beauty spa"
+    },
+    {
+      "id": "service-haircut",
+      "description": "Professional haircut service in progress",
+      "imageUrl": "https://picsum.photos/seed/haircut/400/300",
+      "imageHint": "haircut styling"
+    },
+    {
+      "id": "service-shave",
+      "description": "Classic straight razor shave",
+      "imageUrl": "https://picsum.photos/seed/shave/400/300",
+      "imageHint": "barber shave"
+    },
+    {
+      "id": "service-facial",
+      "description": "Relaxing facial treatment",
+      "imageUrl": "https://picsum.photos/seed/facial/400/300",
+      "imageHint": "facial treatment"
+    }
+  ]
+}
