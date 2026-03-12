@@ -11,5 +11,12 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// We no longer initialize at the module level here to avoid build-time errors.
-// The initialization is now handled centrally in src/firebase/index.ts via the provider.
+// Check if we are on the client side and have an API key before initializing
+const app = (typeof window !== "undefined" || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) 
+  ? (!getApps().length ? initializeApp(firebaseConfig) : getApp())
+  : null;
+
+// Export with safety checks
+export const auth = app ? getAuth(app) : null as any;
+export const db = app ? getFirestore(app) : null as any;
+export default app;
