@@ -1,15 +1,17 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Store, Scissors, Loader2, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Store, Scissors, Loader2, ChevronRight } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { ChatDialog } from '@/components/chat/ChatDialog';
 
 export default function BookingsPage() {
   const { user, isUserLoading } = useUser();
@@ -119,11 +121,17 @@ export default function BookingsPage() {
                             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Amount</p>
                             <p className="text-xl font-headline font-bold text-primary">₹{booking.estimatedTotalAmount}</p>
                           </div>
-                          <Link href={`/salon/${booking.salonId}`}>
-                            <Button variant="ghost" size="icon" className="rounded-full group-hover:bg-primary group-hover:text-white transition-colors">
-                              <ChevronRight className="h-5 w-5" />
-                            </Button>
-                          </Link>
+                          <div className="flex gap-2">
+                            <ChatDialog 
+                              appointmentId={booking.id} 
+                              recipientName={booking.salonName} 
+                            />
+                            <Link href={`/salon/${booking.salonId}`}>
+                              <Button variant="ghost" size="icon" className="rounded-full group-hover:bg-primary group-hover:text-white transition-colors">
+                                <ChevronRight className="h-5 w-5" />
+                              </Button>
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -3,13 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * Core Philosophy: This ruleset implements a multi-tenant salon management system with strict authentication
-     * requirements for all browsing, booking, and management activities.
-     */
-
-    // --- Helper Functions ---
-
     function isSignedIn() {
       return request.auth != null;
     }
@@ -19,102 +12,52 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Note: We use exists() to check for admin role. 
-      // Ensure the path to check is always correct and accessible.
       return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // Combined ownership and existence check for updates/deletes
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    function isExistingAdmin() {
-      return resource != null && isAdmin();
-    }
-
-    // --- Rules ---
-
-    /**
-     * @description Rules for user profiles. Users can manage their own profile; Admins have full access.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == userId;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Database Access Control (DBAC) for Admin roles.
-     * We allow users to get their own role document to facilitate exists() checks without recursive failures.
-     */
     match /roles_admin/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list, write: if isAdmin();
     }
 
-    /**
-     * @description Publicly browseable salons for authenticated users.
-     */
     match /salons/{salonId} {
-      // Explicitly allow list and get for any signed-in user to support public directory.
       allow list, get: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.ownerId) || isAdmin();
-      allow delete: if isExistingAdmin();
+      allow update: if resource.data.ownerId == request.auth.uid || isAdmin();
+      allow delete: if isAdmin();
 
-      /**
-       * @description Salon services.
-       */
       match /services/{serviceId} {
         allow get, list: if isSignedIn();
-        allow create: if isOwner(request.resource.data.salonOwnerId);
-        allow update: if (isExistingOwner(resource.data.salonOwnerId) || isAdmin()) && request.resource.data.salonOwnerId == resource.data.salonOwnerId;
-        allow delete: if isExistingOwner(resource.data.salonOwnerId) || isAdmin();
-      }
-
-      /**
-       * @description Subscription details for a salon.
-       */
-      match /subscriptions/{subscriptionId} {
-        allow get, list: if isOwner(resource.data.salonOwnerId) || isAdmin();
-        allow create: if isOwner(request.resource.data.salonOwnerId) || isAdmin();
-        allow update: if (isExistingOwner(resource.data.salonOwnerId) || isAdmin());
-        allow delete: if isAdmin();
-
-        /**
-         * @description Payment records for subscriptions.
-         */
-        match /payments/{paymentId} {
-          allow get, list: if isOwner(resource.data.salonOwnerId) || isAdmin();
-          allow create, update, delete: if isAdmin();
-        }
+        allow create, update, delete: if get(/databases/$(database)/documents/salons/$(salonId)).data.ownerId == request.auth.uid || isAdmin();
       }
     }
 
-    /**
-     * @description Centralized appointments. Accessible by the customer or the salon owner.
-     */
     match /appointments/{appointmentId} {
-      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.salonOwnerId) || isAdmin();
-      allow list: if isSignedIn(); 
-      allow create: if isOwner(request.resource.data.customerId);
-      allow update: if (isExistingOwner(resource.data.customerId) || isExistingOwner(resource.data.salonOwnerId) || isAdmin())
-                    && request.resource.data.customerId == resource.data.customerId;
+      allow get: if isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.salonOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.salonOwnerId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow list, get, create: if isSignedIn() && (
+          get(/databases/$(database)/documents/appointments/$(appointmentId)).data.customerId == request.auth.uid ||
+          get(/databases/$(database)/documents/appointments/$(appointmentId)).data.salonOwnerId == request.auth.uid
+        );
+      }
     }
 
-    /**
-     * @description No-show flags. Visible to the flagged user and the reporting salon.
-     */
     match /noShowFlags/{flagId} {
-      allow get: if isOwner(resource.data.customerId) || isOwner(resource.data.salonOwnerId) || isAdmin();
-      allow list: if isSignedIn();
-      allow create: if isOwner(request.resource.data.salonOwnerId);
-      allow update: if (isExistingOwner(resource.data.salonOwnerId) || isAdmin());
-      allow delete: if isAdmin();
+      allow get, list, create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
   }
 }

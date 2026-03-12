@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, use, useEffect } from "react";
@@ -23,14 +24,12 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
   const db = useFirestore();
   const router = useRouter();
 
-  // Fetch salon details
   const salonRef = useMemoFirebase(() => {
     if (!db || !id) return null;
     return doc(db, "salons", id);
   }, [db, id]);
   const { data: salon, isLoading: isSalonLoading } = useDoc(salonRef);
 
-  // Fetch salon services
   const servicesRef = useMemoFirebase(() => {
     if (!db || !id) return null;
     return collection(db, "salons", id, "services");
@@ -41,7 +40,6 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
   const [bookingData, setBookingData] = useState({
     userName: "",
-    userPhone: "",
     date: "",
     time: "",
   });
@@ -99,10 +97,9 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
       id: appointmentRef.id,
       customerId: user.uid,
       customerName: bookingData.userName,
-      customerPhone: bookingData.userPhone,
       salonId: salon.id,
       salonName: salon.name,
-      salonOwnerId: salon.ownerId, // For security rules
+      salonOwnerId: salon.ownerId,
       serviceIds: [selectedService],
       serviceName: service?.name || "",
       requestedDateTime: `${bookingData.date}T${bookingData.time}`,
@@ -118,7 +115,7 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
         setBookingStatus('success');
         toast({
           title: "Booking Requested",
-          description: "Your request has been sent to the owner.",
+          description: "Your request has been sent. You can now chat with the owner.",
         });
       })
       .catch((err) => {
@@ -143,15 +140,20 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
             <h1 className="text-3xl font-headline font-bold mb-4">Request Sent!</h1>
             <p className="text-muted-foreground mb-8">
               We've notified <strong>{salon.name}</strong> of your appointment request. 
-              Keep an eye on your phone for a confirmation SMS soon.
+              You can now open the chat to discuss details with the owner.
             </p>
             <div className="bg-muted/30 p-4 rounded-2xl mb-8 text-left">
               <p className="text-sm font-semibold mb-1">Landmark for your visit:</p>
               <p className="text-primary font-medium">{salon.landmark}</p>
             </div>
-            <Button asChild className="w-full py-6 rounded-2xl">
-              <a href="/">Browse more salons</a>
-            </Button>
+            <div className="flex gap-4">
+              <Button asChild variant="outline" className="flex-1 py-6 rounded-2xl">
+                <a href="/bookings">Go to My Bookings</a>
+              </Button>
+              <Button asChild className="flex-1 py-6 rounded-2xl">
+                <a href="/">Browse more</a>
+              </Button>
+            </div>
           </div>
         </main>
       </div>
@@ -164,7 +166,6 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Main Info */}
           <div className="lg:col-span-2 space-y-8">
             <div className="relative h-96 w-full rounded-3xl overflow-hidden shadow-sm">
               <Image 
@@ -235,13 +236,12 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
               <TabsContent value="about" className="mt-6 bg-white p-8 rounded-3xl border">
                 <h3 className="text-xl font-bold mb-4">The Experience</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  {salon.description || `Located at the heart of ${salon.city}, ${salon.name} is dedicated to providing high-quality grooming services for the modern professional. Our experienced stylists use only premium products to ensure you walk out looking your absolute best.`}
+                  {salon.description || `Located at the heart of ${salon.city}, ${salon.name} is dedicated to providing high-quality grooming services for the modern professional.`}
                 </p>
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* Sticky Booking Form */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24 rounded-3xl border-none shadow-xl bg-white overflow-hidden">
               <CardHeader className="bg-primary p-6">
@@ -257,17 +257,6 @@ export default function SalonDetailPage({ params }: { params: Promise<{ id: stri
                       required 
                       className="rounded-xl" 
                       value={bookingData.userName}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="userPhone">WhatsApp Number</Label>
-                    <Input 
-                      id="userPhone" 
-                      placeholder="+91 12345 67890" 
-                      required 
-                      className="rounded-xl"
-                      value={bookingData.userPhone}
                       onChange={handleInputChange}
                     />
                   </div>

@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   CheckCircle, 
   Clock, 
-  IndianRupee, 
   Calendar, 
   Scissors, 
   UserCheck,
@@ -23,7 +23,6 @@ import {
   Pencil,
   Loader2,
   XCircle,
-  Phone,
   Check
 } from "lucide-react";
 import { 
@@ -43,6 +42,7 @@ import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { format } from "date-fns";
+import { ChatDialog } from "@/components/chat/ChatDialog";
 
 export default function OwnerDashboard() {
   const { user, isUserLoading } = useUser();
@@ -55,7 +55,6 @@ export default function OwnerDashboard() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [editingService, setEditingService] = useState<any | null>(null);
 
-  // Form state for registration
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -66,7 +65,6 @@ export default function OwnerDashboard() {
     imageUrl: "",
   });
 
-  // Form state for new service
   const [serviceData, setServiceData] = useState({
     name: "",
     description: "",
@@ -74,7 +72,6 @@ export default function OwnerDashboard() {
     durationMinutes: "30",
   });
 
-  // Query for the owner's salon
   const salonQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "salons"), where("ownerId", "==", user.uid));
@@ -83,7 +80,6 @@ export default function OwnerDashboard() {
   const { data: salons, isLoading: isSalonLoading } = useCollection(salonQuery);
   const salon = salons?.[0];
 
-  // Query for services of the salon
   const servicesQuery = useMemoFirebase(() => {
     if (!db || !salon?.id) return null;
     return collection(db, "salons", salon.id, "services");
@@ -91,7 +87,6 @@ export default function OwnerDashboard() {
 
   const { data: services, isLoading: isServicesLoading } = useCollection(servicesQuery);
 
-  // Query for appointments of the salon
   const appointmentsQuery = useMemoFirebase(() => {
     if (!db || !salon?.id) return null;
     return query(collection(db, "appointments"), where("salonId", "==", salon.id));
@@ -175,7 +170,7 @@ export default function OwnerDashboard() {
     const newService = {
       id: serviceRef.id,
       salonId: salon.id,
-      salonOwnerId: user.uid, // Denormalized for security rules
+      salonOwnerId: user.uid,
       name: serviceData.name,
       description: serviceData.description,
       price: Number(serviceData.price),
@@ -705,13 +700,15 @@ export default function OwnerDashboard() {
                             <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                               <Clock className="h-3 w-3" /> {apt.requestedDateTime.replace('T', ' ')}
                             </p>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> {apt.customerPhone}
-                            </p>
                           </div>
                         </div>
                         
                         <div className="flex gap-2 w-full md:w-auto">
+                          <ChatDialog 
+                            appointmentId={apt.id} 
+                            recipientName={apt.customerName} 
+                            isOwnerView={true}
+                          />
                           {apt.status === 'Pending' && (
                             <>
                               <Button 
@@ -737,11 +734,6 @@ export default function OwnerDashboard() {
                             >
                               <UserCheck className="h-4 w-4" /> Flag No-Show
                             </Button>
-                          )}
-                          {apt.status === 'NoShow' && (
-                            <Badge variant="destructive" className="rounded-xl px-4 py-2">
-                              No-Show Flagged
-                            </Badge>
                           )}
                         </div>
                       </CardContent>
