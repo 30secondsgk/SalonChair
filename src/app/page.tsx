@@ -16,14 +16,15 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Star, Search, Filter, Calendar } from "lucide-react";
-import { MOCK_SALONS, Salon } from "@/lib/mock-data";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
   const { user, isUserLoading } = useUser();
+  const db = useFirestore();
   const router = useRouter();
   const [state, setState] = useState<string>("all");
   const [city, setCity] = useState<string>("");
@@ -31,18 +32,29 @@ export default function HomePage() {
 
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-salon');
 
+  // Query for active and verified salons
+  const activeSalonsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, "salons"), 
+      where("isActive", "==", true),
+      where("isVerifiedByAdmin", "==", true)
+    );
+  }, [db]);
+
+  const { data: salons, isLoading: isSalonsLoading } = useCollection(activeSalonsQuery);
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
-  const filteredSalons = MOCK_SALONS.filter(salon => {
+  const filteredSalons = (salons || []).filter(salon => {
     const matchesState = state === "all" || salon.state === state;
     const matchesCity = city === "" || salon.city.toLowerCase().includes(city.toLowerCase());
     const matchesSearch = salon.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const isActive = salon.status === 'active';
-    return matchesState && matchesCity && matchesSearch && isActive;
+    return matchesState && matchesCity && matchesSearch;
   });
 
   if (isUserLoading || !user) {
@@ -127,28 +139,36 @@ export default function HomePage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSalons.map((salon) => (
-            <SalonCard key={salon.id} salon={salon} />
-          ))}
-          {filteredSalons.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed">
-              <p className="text-lg font-medium text-muted-foreground">No active salons found matching your criteria.</p>
-              <Button variant="link" onClick={() => {setState("all"); setCity(""); setSearchQuery("");}}>Clear all filters</Button>
-            </div>
-          )}
-        </div>
+        {isSalonsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="h-[400px] rounded-3xl animate-pulse bg-muted/50" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredSalons.map((salon) => (
+              <SalonCard key={salon.id} salon={salon} />
+            ))}
+            {filteredSalons.length === 0 && (
+              <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed">
+                <p className="text-lg font-medium text-muted-foreground">No active salons found matching your criteria.</p>
+                <Button variant="link" onClick={() => {setState("all"); setCity(""); setSearchQuery("");}}>Clear all filters</Button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
 }
 
-function SalonCard({ salon }: { salon: Salon }) {
+function SalonCard({ salon }: { salon: any }) {
   return (
-    <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 rounded-3xl border-none bg-white">
+    <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 rounded-3xl border-none bg-white flex flex-col h-full">
       <div className="relative h-56 w-full">
         <Image 
-          src={salon.image}
+          src={salon.imageUrl || 'https://picsum.photos/seed/salon/600/400'}
           alt={salon.name}
           fill
           className="object-cover transition-transform group-hover:scale-105 duration-500"
@@ -156,7 +176,7 @@ function SalonCard({ salon }: { salon: Salon }) {
         />
         <div className="absolute top-4 left-4">
           <Badge className="bg-white/90 text-primary hover:bg-white font-semibold backdrop-blur-sm">
-            <Star className="h-3 w-3 fill-primary mr-1" /> {salon.rating}
+            <Star className="h-3 w-3 fill-primary mr-1" /> {salon.rating || '4.5'}
           </Badge>
         </div>
       </div>
@@ -170,23 +190,13 @@ function SalonCard({ salon }: { salon: Salon }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className="pb-4 flex-1">
         <p className="text-sm bg-accent/10 text-accent font-medium p-2 rounded-lg mb-4">
           📍 {salon.landmark}
         </p>
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Services offered:</p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {salon.services.slice(0, 3).map(service => (
-              <Badge key={service.id} variant="secondary" className="font-normal">
-                {service.name}
-              </Badge>
-            ))}
-            {salon.services.length > 3 && (
-              <Badge variant="outline" className="font-normal">+{salon.services.length - 3} more</Badge>
-            )}
-          </div>
-        </div>
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {salon.description || 'Professional grooming and styling services for all.'}
+        </p>
       </CardContent>
       <CardFooter className="pt-0 border-t mt-auto p-4 flex gap-2">
         <Link href={`/salon/${salon.id}`} className="flex-1">
