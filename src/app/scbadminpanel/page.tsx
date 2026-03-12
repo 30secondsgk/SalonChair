@@ -25,7 +25,7 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "Jumbopack") {
+    if (password === "Jumbopack@1137#") {
       setIsAuthenticated(true);
       toast({
         title: "Access Granted",
