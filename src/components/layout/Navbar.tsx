@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -42,7 +43,27 @@ export function Navbar() {
           <div className="bg-primary p-2 rounded-lg">
             <Scissors className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-xl font-headline font-bold text-primary">SalonChair</span>
+          <span className="text-xl font-headline font-bold text-primary flex items-center">
+            SalonChair
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="h-5 w-5 ml-1.5"
+            >
+              <path d="M19 13v3" />
+              <path d="M5 13v3" />
+              <path d="M4 13h16" />
+              <path d="M18 13V10a6 6 0 0 0-12 0v3" />
+              <path d="M12 16v4" />
+              <path d="M8 20h8" />
+              <rect x="7" y="14" width="10" height="2" rx="1" fill="currentColor" fillOpacity="0.1" />
+            </svg>
+          </span>
         </Link>
 
         <div className="flex items-center gap-4">
