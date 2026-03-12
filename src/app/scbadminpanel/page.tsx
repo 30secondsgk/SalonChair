@@ -10,21 +10,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck, ShieldAlert, BarChart3, Building2, Search, Lock, Store } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
+  const { user } = useUser();
   const db = useFirestore();
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Query for all salons
+  // Query for all salons - only run when authenticated locally
   const allSalonsQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || !isAuthenticated) return null;
     return query(collection(db, "salons"));
-  }, [db]);
+  }, [db, isAuthenticated]);
 
   const { data: salons, isLoading } = useCollection(allSalonsQuery);
 
@@ -59,11 +60,7 @@ export default function AdminDashboard() {
         description: `Salon has been ${!currentStatus ? 'approved' : 'hidden'}.`,
       });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Could not update status.",
-        variant: "destructive"
-      });
+      // Error is handled by global emitter
     }
   };
 
