@@ -39,9 +39,9 @@
     },
     {
       "id": "hero-salon",
-      "description": "Luxurious modern salon interior with professional lighting and equipment",
+      "description": "Spacious and modern salon interior featuring professional styling chairs and large mirrors",
       "imageUrl": "https://picsum.photos/seed/herosalon/1200/800",
-      "imageHint": "luxury salon"
+      "imageHint": "salon interior"
     }
   ]
 }
