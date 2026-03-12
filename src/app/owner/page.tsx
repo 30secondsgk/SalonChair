@@ -35,7 +35,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, serverTimestamp, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, serverTimestamp, doc, setDoc, updateDoc, deleteDoc, orderBy } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { toast } from "@/hooks/use-toast";
@@ -88,9 +88,14 @@ export default function OwnerDashboard() {
   const { data: services, isLoading: isServicesLoading } = useCollection(servicesQuery);
 
   const appointmentsQuery = useMemoFirebase(() => {
-    if (!db || !salon?.id) return null;
-    return query(collection(db, "appointments"), where("salonId", "==", salon.id));
-  }, [db, salon?.id]);
+    if (!db || !user?.uid) return null;
+    // Security: Filter by salonOwnerId to match Firestore Security Rules
+    return query(
+      collection(db, "appointments"), 
+      where("salonOwnerId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user?.uid]);
 
   const { data: appointments, isLoading: isAppointmentsLoading } = useCollection(appointmentsQuery);
 
@@ -678,7 +683,7 @@ export default function OwnerDashboard() {
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 gap-4">
-                  {appointments.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds).map((apt) => (
+                  {appointments.map((apt) => (
                     <Card key={apt.id} className="rounded-3xl border-none shadow-sm bg-white overflow-hidden">
                       <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="flex gap-4 items-start">
