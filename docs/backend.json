@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user of the SalonChair application, including public customers, salon owners, and administrators.",
+      "description": "Represents a user of the Salon Chair application, including public customers, salon owners, and administrators.",
       "properties": {
         "id": {
           "type": "string",
@@ -63,7 +63,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Salon",
       "type": "object",
-      "description": "Represents a salon registered on the SalonChair platform.",
+      "description": "Represents a salon registered on the Salon Chair platform.",
       "properties": {
         "id": {
           "type": "string",
@@ -581,7 +581,6 @@
           ]
         }
       }
-    ],
-    "reasoning": "The recommended Firestore structure is designed to meet the core principles of Authorization Independence, Structural Segregation, and Access Modeling, prioritizing security, scalability, and debuggability. All authenticated users will be identified via `request.auth.uid`.\n\n**Authorization Independence (CRITICAL):** This is achieved by extensively denormalizing authorization-relevant fields directly into the documents that require access checks. Specifically:\n1.  **`Salon` documents** contain `ownerId` to directly identify the salon owner.\n2.  **`Service` documents** will denormalize `salonOwnerId` from their parent `Salon` to allow authorization checks without performing a `get()` on the parent `Salon` document.\n3.  **`Appointment` documents** will include both `customerId` (the user who made the booking) and `salonOwnerId` (the owner of the salon receiving the booking). This allows atomic read/write operations for both parties and simplifies security rules, avoiding `get()` calls to other collections.\n4.  **`Subscription` documents** will denormalize `salonOwnerId` to enable direct authorization checks by the salon owner or admin.\n5.  **`Payment` documents** will denormalize `salonOwnerId` from their associated `Salon` (via `Subscription`) to allow direct read access for the salon owner without multiple `get()` calls.\n6.  **`NoShowFlag` documents** will include both `customerId` (the flagged user) and `salonOwnerId` (the owner of the salon that issued the flag) for independent authorization.\n\nThis denormalization ensures that security rules can evaluate permissions solely based on the `request.auth.uid` and the fields present within the document being accessed, or simple existence checks (for admin roles), eliminating costly and non-atomic `get()` calls.\n\n**Querying for Access Patterns (QAPs):** The structure facilitates secure `list` operations:\n1.  **Public Salon Directory:** The `/salons` collection allows public users (all authenticated users) to list and filter salons based on `city`, `state`, `isActive`, and `isVerifiedByAdmin` fields. Rules will ensure only active and verified salons are readable.\n2.  **Salon Services:** The `/salons/{salonId}/services` subcollection enables efficient listing of services for a specific salon, readable by all authenticated users.\n3.  **User-Specific Data:** \n    *   `/users/{userId}` provides a private space for each user's profile, accessible only by the user themselves or an admin.\n    *   `/appointments` collection, by including `customerId` and `salonOwnerId`, supports QAPs for users to list *their own* appointments (`where('customerId', '==', request.auth.uid)`) and for salon owners to list *their salon's* appointments (`where('salonOwnerId', '==', request.auth.uid)`).\n    *   `/noShowFlags` collection allows users to see their own flags (`where('customerId', '==', request.auth.uid)pack`).\n4.  **Admin and Owner Specific Data:** Collections like `/roles_admin/{userId}`, `/salons/{salonId}/subscriptions`, and `/salons/{salonId}/subscriptions/{subscriptionId}/payments` are structured to enable direct access for admins or specific salon owners without exposing sensitive data broadly.\n\n**Structural Segregation:** Data with different security postures is separated:\n*   `/users/{userId}`: Private user profiles.\n*   `/roles_admin/{userId}`: Strictly for admin role verification.\n*   `/salons/{salonId}`: Publicly visible (filtered) salon data.\n*   `/salons/{salonId}/services`: Publicly visible service data.\n*   `/appointments`: Semi-private, accessible by `customerId` or `salonOwnerId`.\n*   `/salons/{salonId}/subscriptions` and `/salons/{salonId}/subscriptions/{subscriptionId}/payments`: Private to salon owner/admin.\n*   `/noShowFlags`: Semi-private, accessible by `customerId`, `salonOwnerId` or admin.\n\nThis design ensures clear, robust, and easily debuggable security rules, as authorization logic is contained within the document or path context, minimizing complex cross-document checks."
+    ]
   }
 }

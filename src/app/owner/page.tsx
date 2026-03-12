@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -257,7 +258,7 @@ export default function OwnerDashboard() {
                 <Store className="h-10 w-10" />
               </div>
               <h1 className="text-3xl font-headline font-bold mb-2">Register Your Salon</h1>
-              <p className="text-muted-foreground">List your business on SalonChair to start reaching customers.</p>
+              <p className="text-muted-foreground">List your business on Salon Chair to start reaching customers.</p>
             </div>
 
             <Card className="rounded-3xl border-none shadow-xl overflow-hidden bg-white">

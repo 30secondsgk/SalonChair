@@ -44,7 +44,7 @@ export function Navbar() {
             <Scissors className="h-6 w-6 text-primary-foreground" />
           </div>
           <span className="text-xl font-headline font-bold text-primary flex items-center">
-            SalonChair
+            Salon Chair
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
               viewBox="0 0 24 24" 

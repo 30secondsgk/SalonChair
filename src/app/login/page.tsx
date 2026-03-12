@@ -62,7 +62,7 @@ export default function LoginPage() {
           <div className="bg-white/20 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Scissors className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-headline font-bold">Welcome to SalonChair</CardTitle>
+          <CardTitle className="text-2xl font-headline font-bold">Welcome to Salon Chair</CardTitle>
           <CardDescription className="text-primary-foreground/80">
             {isLogin ? "Sign in to book your next session" : "Create an account to browse salons"}
           </CardDescription>

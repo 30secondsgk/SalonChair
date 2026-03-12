@@ -1,7 +1,7 @@
 
 # Deploying to Vercel
 
-To deploy this SalonChair application to Vercel, follow these steps:
+To deploy this Salon Chair application to Vercel, follow these steps:
 
 1. **Push your code to Git**: Create a repository on GitHub, GitLab, or Bitbucket and push your current code.
 2. **Import to Vercel**: 
