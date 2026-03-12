@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
@@ -9,19 +9,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, ShieldAlert, BarChart3, Building2, Search, Lock } from "lucide-react";
-import { MOCK_SALONS, Salon } from "@/lib/mock-data";
+import { ShieldCheck, ShieldAlert, BarChart3, Building2, Search, Lock, Store } from "lucide-react";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
-  const [salons, setSalons] = useState<Salon[]>(MOCK_SALONS);
-  const [mounted, setMounted] = useState(false);
+  const db = useFirestore();
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Query for all salons
+  const allSalonsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, "salons"));
+  }, [db]);
+
+  const { data: salons, isLoading } = useCollection(allSalonsQuery);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +45,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleStatus = (id: string, newStatus: 'active' | 'hidden' | 'pending') => {
-    setSalons(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
-    toast({
-      title: "Status Updated",
-      description: `Salon status has been changed to ${newStatus}.`,
-    });
+  const toggleStatus = async (id: string, currentStatus: boolean) => {
+    if (!db) return;
+    try {
+      const salonRef = doc(db, "salons", id);
+      await updateDoc(salonRef, {
+        isVerifiedByAdmin: !currentStatus,
+        isActive: !currentStatus,
+        updatedAt: serverTimestamp()
+      });
+      toast({
+        title: "Status Updated",
+        description: `Salon has been ${!currentStatus ? 'approved' : 'hidden'}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Could not update status.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (!isAuthenticated) {
@@ -86,8 +105,13 @@ export default function AdminDashboard() {
     );
   }
 
-  const activeCount = salons.filter(s => s.status === 'active').length;
-  const pendingCount = salons.filter(s => s.status === 'pending').length;
+  const filteredSalons = salons?.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.city.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
+  const activeCount = salons?.filter(s => s.isActive).length || 0;
+  const pendingCount = salons?.filter(s => !s.isVerifiedByAdmin).length || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,10 +119,9 @@ export default function AdminDashboard() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-headline font-bold">Admin Central</h1>
-          <p className="text-muted-foreground">Monitor platform health and authorize new partners.</p>
+          <p className="text-muted-foreground">Monitor platform health and verify new salon partners.</p>
         </div>
 
-        {/* Admin Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="rounded-3xl border-none shadow-sm">
             <CardContent className="p-6 flex items-center gap-4">
@@ -106,8 +129,8 @@ export default function AdminDashboard() {
                 <Building2 className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Salons</p>
-                <p className="text-2xl font-headline font-bold">{salons.length}</p>
+                <p className="text-sm text-muted-foreground">Total Partners</p>
+                <p className="text-2xl font-headline font-bold">{salons?.length || 0}</p>
               </div>
             </CardContent>
           </Card>
@@ -117,8 +140,8 @@ export default function AdminDashboard() {
                 <BarChart3 className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-                <p className="text-2xl font-headline font-bold">₹{activeCount * 200}</p>
+                <p className="text-sm text-muted-foreground">Active Salons</p>
+                <p className="text-2xl font-headline font-bold">{activeCount}</p>
               </div>
             </CardContent>
           </Card>
@@ -128,7 +151,7 @@ export default function AdminDashboard() {
                 <ShieldAlert className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Awaiting Verification</p>
+                <p className="text-sm text-muted-foreground">Pending Approval</p>
                 <p className="text-2xl font-headline font-bold">{pendingCount}</p>
               </div>
             </CardContent>
@@ -137,89 +160,89 @@ export default function AdminDashboard() {
 
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-headline font-bold">Registration Queue</h2>
+            <h2 className="text-xl font-headline font-bold">Partner Management</h2>
             <div className="relative">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input 
-                className="pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 ring-primary/20 outline-none" 
-                placeholder="Search salons..." 
+              <Input 
+                className="pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 ring-primary/20 outline-none w-64" 
+                placeholder="Search by name or city..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-white">
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="font-bold">Salon Name</TableHead>
-                  <TableHead className="font-bold">Location</TableHead>
-                  <TableHead className="font-bold">Status</TableHead>
-                  <TableHead className="font-bold">Subscription</TableHead>
-                  <TableHead className="text-right font-bold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {salons.map((salon) => (
-                  <TableRow key={salon.id} className="hover:bg-muted/5">
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-bold">{salon.name}</span>
-                        <span className="text-xs text-muted-foreground">Owner ID: {salon.ownerId}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm">{salon.city}, {salon.state}</span>
-                        <span className="text-xs text-muted-foreground">{salon.landmark}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={salon.status === 'active' ? 'default' : salon.status === 'pending' ? 'secondary' : 'destructive'} className="rounded-full">
-                        {salon.status.toUpperCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm font-medium">
-                        {mounted ? (
-                          salon.subscriptionExpiry < new Date() ? (
-                            <span className="text-red-500">Expired</span>
-                          ) : (
-                            <span className="text-green-600">Paid</span>
-                          )
-                        ) : (
-                          <span className="text-muted-foreground">Checking...</span>
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {salon.status !== 'active' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="rounded-lg text-green-600 hover:bg-green-50 gap-1"
-                            onClick={() => toggleStatus(salon.id, 'active')}
-                          >
-                            <ShieldCheck className="h-3 w-3" /> Approve
-                          </Button>
-                        )}
-                        {salon.status === 'active' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="rounded-lg text-red-600 hover:bg-red-50 gap-1"
-                            onClick={() => toggleStatus(salon.id, 'hidden')}
-                          >
-                            <ShieldAlert className="h-3 w-3" /> Hide Shop
-                          </Button>
-                        )}
-                        <Button size="sm" variant="ghost" className="rounded-lg">Details</Button>
-                      </div>
-                    </TableCell>
+            {isLoading ? (
+              <div className="p-20 text-center text-muted-foreground animate-pulse">Loading salon data...</div>
+            ) : filteredSalons.length === 0 ? (
+              <div className="p-20 text-center text-muted-foreground">No salons found matching your search.</div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="font-bold">Salon Name</TableHead>
+                    <TableHead className="font-bold">Location</TableHead>
+                    <TableHead className="font-bold">Status</TableHead>
+                    <TableHead className="font-bold">Verification</TableHead>
+                    <TableHead className="text-right font-bold">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredSalons.map((salon) => (
+                    <TableRow key={salon.id} className="hover:bg-muted/5">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-muted p-2 rounded-lg">
+                            <Store className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold">{salon.name}</span>
+                            <span className="text-xs text-muted-foreground line-clamp-1">{salon.description || 'No description'}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-sm">{salon.city}, {salon.state}</span>
+                          <span className="text-xs text-muted-foreground">{salon.landmark}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={salon.isActive ? 'default' : 'secondary'} className="rounded-full">
+                          {salon.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium">
+                          {salon.isVerifiedByAdmin ? (
+                            <span className="text-green-600 flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Verified</span>
+                          ) : (
+                            <span className="text-amber-600 flex items-center gap-1"><ShieldAlert className="h-3 w-3" /> Pending</span>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            size="sm" 
+                            variant={salon.isVerifiedByAdmin ? "outline" : "default"}
+                            className={`rounded-lg gap-1 ${salon.isVerifiedByAdmin ? 'text-red-600 hover:bg-red-50' : 'bg-green-600 hover:bg-green-700'}`}
+                            onClick={() => toggleStatus(salon.id, salon.isVerifiedByAdmin)}
+                          >
+                            {salon.isVerifiedByAdmin ? (
+                              <><ShieldAlert className="h-3 w-3" /> Suspend</>
+                            ) : (
+                              <><ShieldCheck className="h-3 w-3" /> Approve</>
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </Card>
         </div>
       </main>
