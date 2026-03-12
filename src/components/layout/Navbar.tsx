@@ -1,9 +1,8 @@
-
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Scissors, User, LayoutDashboard, LogOut } from 'lucide-react';
+import { Scissors, User, LayoutDashboard, LogOut, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -25,12 +24,14 @@ export function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      toast({
-        title: 'Logged out',
-        description: 'You have been successfully logged out.',
-      });
-      router.push('/login');
+      if (auth) {
+        await signOut(auth);
+        toast({
+          title: 'Logged out',
+          description: 'You have been successfully logged out.',
+        });
+        router.push('/login');
+      }
     } catch (error) {
       console.error('Logout error', error);
     }
@@ -67,12 +68,20 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <Link href="/owner">
-                <Button variant="ghost" size="sm" className="hidden sm:flex gap-2 text-primary font-semibold">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Salon Owner
-                </Button>
-              </Link>
+              <div className="hidden md:flex items-center gap-2">
+                <Link href="/bookings">
+                  <Button variant="ghost" size="sm" className="gap-2 text-primary font-semibold">
+                    <Calendar className="h-4 w-4" />
+                    My Bookings
+                  </Button>
+                </Link>
+                <Link href="/owner">
+                  <Button variant="ghost" size="sm" className="gap-2 text-primary font-semibold">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Salon Owner
+                  </Button>
+                </Link>
+              </div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -91,6 +100,19 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="md:hidden">
+                    <Link href="/bookings">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <span>My Bookings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="md:hidden">
+                    <Link href="/owner">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Salon Owner</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="md:hidden" />
                   <DropdownMenuItem
                     onClick={handleLogout}
                     className="text-red-600 focus:text-red-600 cursor-pointer"
